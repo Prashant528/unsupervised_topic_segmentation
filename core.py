@@ -9,13 +9,21 @@ from transformers import RobertaConfig, RobertaModel
 configuration = RobertaConfig()
 roberta_model = RobertaModel(configuration)
 
-from types import (
+from data_types import (
     TopicSegmentationAlgorithm,
     TopicSegmentationConfig,
     TextTilingHyperparameters,
 )
 
 PARALLEL_INFERENCE_INSTANCES = 20
+TOPIC_CHANGE_THRESHOLD = 0.6
+SENTENCE_COMPARISON_WINDOW = 15
+SMOOTHING_PASSES = 2
+SMOOTHING_WINDOW = 1
+TOPIC_CHANGE_THRESHOLD = 0.6
+
+MAX_SEGMENTS_CAP = True
+MAX_SEGMENTS_CAP__AVERAGE_SEGMENT_LENGTH = 60
 
 def PrintMessage(msg, x):
     print(msg)
@@ -67,7 +75,8 @@ def compute_window(timeseries, start_index, end_index):
 
     [window_size, 768] -> [1, 768]
     """
-    stack = torch.stack([features[0] for features in timeseries[start_index:end_index]])
+    # stack = torch.stack([features[0] for features in timeseries[start_index:end_index]])
+    stack = torch.stack([features for features in timeseries[start_index:end_index]])
     stack = stack.unsqueeze(
         0
     )  # https://jbencook.com/adding-a-dimension-to-a-tensor-in-pytorch/
@@ -131,29 +140,28 @@ def get_local_maxima(array):
 
 def depth_score_to_topic_change_indexes(
     depth_score_timeseries,
-    meeting_duration,
-    topic_segmentation_configs=TopicSegmentationConfig,
+    meeting_duration
 ):
     """
     capped add a max segment limit so there are not too many segments, used for UI improvements on the Workplace TeamWork product
     """
 
-    capped = topic_segmentation_configs.MAX_SEGMENTS_CAP
-    average_segment_length = (
-        topic_segmentation_configs.MAX_SEGMENTS_CAP__AVERAGE_SEGMENT_LENGTH
-    )
-    threshold = topic_segmentation_configs.TEXT_TILING.TOPIC_CHANGE_THRESHOLD * max(
+    capped = MAX_SEGMENTS_CAP
+    average_segment_length = MAX_SEGMENTS_CAP__AVERAGE_SEGMENT_LENGTH
+    threshold = TOPIC_CHANGE_THRESHOLD * max(
         depth_score_timeseries
     )
 
     print("DEPTH_SCORE_TIMESERIES:")
+    print("CHANGE TEST")
     print(list(depth_score_timeseries))
 
     if depth_score_timeseries == []:
+        print("Empty depth score series.")
         return []
 
     local_maxima_indices, local_maxima = get_local_maxima(depth_score_timeseries)
-
+    print(f"Local maxima: {local_maxima}")
     if local_maxima == []:
         return []
 

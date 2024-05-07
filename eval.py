@@ -8,7 +8,7 @@ from dataset import (
     ami_dataset,
     icsi_dataset,
 )
-from types import (
+from data_types import (
     TopicSegmentationAlgorithm,
     TopicSegmentationDatasets,
     TopicSegmentationConfig,
